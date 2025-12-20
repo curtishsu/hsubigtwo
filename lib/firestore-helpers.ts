@@ -422,6 +422,30 @@ export async function fetchCompletedGames(limitCount = 50): Promise<GameWithResu
   return games;
 }
 
+export async function fetchRecentCompletedGames(limitCount = 50): Promise<GameDoc[]> {
+  const q = query(
+    gamesCollection,
+    where('status', '==', 'completed'),
+    orderBy('endedAt', 'desc'),
+    limit(limitCount),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((docSnapshot) => {
+    const data = docSnapshot.data();
+    return {
+      id: docSnapshot.id,
+      startedAt: data.startedAt?.toDate?.() ?? null,
+      endedAt: data.endedAt?.toDate?.() ?? null,
+      totalRounds: data.totalRounds,
+      roundsPlayed: data.roundsPlayed,
+      status: data.status,
+      hideScores: data.hideScores ?? false,
+      tag: data.tag ?? null,
+      notes: data.notes ?? null,
+    } as GameDoc;
+  });
+}
+
 async function getCompletedRoundsCount(gameId: string): Promise<number> {
   const roundsSnapshot = await getDocs(query(roundsCollection(gameId), orderBy('roundNumber', 'asc')));
 
@@ -450,8 +474,16 @@ export async function syncRoundsProgress(gameId: string) {
 }
 
 export async function updateGameTag(gameId: string, tag: string | null) {
+  const trimmed = tag?.trim() ?? '';
+  if (!trimmed) {
+    await updateDoc(gameDoc(gameId), { tag: null });
+    return;
+  }
+  if (trimmed.length > 24) {
+    throw new Error('Tag must be 24 characters or fewer.');
+  }
   await updateDoc(gameDoc(gameId), {
-    tag: tag?.trim() || null,
+    tag: trimmed,
   });
 }
 

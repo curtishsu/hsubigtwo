@@ -6,6 +6,7 @@ import {
   type GameWithResults,
 } from '../../../lib/firestore-helpers';
 import { PLAYER_ORDER, PLAYER_PROFILES } from '../../../lib/constants';
+import { TagEditor } from '../../components/TagEditor';
 
 type PlacementSummary = Record<
   string,
@@ -21,6 +22,9 @@ export default function HistoryPage() {
   const [games, setGames] = useState<GameWithResults[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [taggingContext, setTaggingContext] = useState<{ id: string; label: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -72,8 +76,30 @@ export default function HistoryPage() {
   }, [games]);
 
   const tableRows = useMemo(() => {
-    const dateCounter = new Map<string, number>();
-    return games.map((game) => {
+    const dateCounters = new Map<string, number>();
+    const ordinalById = new Map<string, number>();
+    const chronologicalGames = [...games].sort((a, b) => {
+      const aTime = a.endedAt?.getTime() ?? 0;
+      const bTime = b.endedAt?.getTime() ?? 0;
+      return aTime - bTime;
+    });
+
+    chronologicalGames.forEach((game) => {
+      const dateKey = game.endedAt
+        ? new Intl.DateTimeFormat('en-CA').format(game.endedAt)
+        : 'unknown';
+      const count = (dateCounters.get(dateKey) ?? 0) + 1;
+      dateCounters.set(dateKey, count);
+      ordinalById.set(game.id, count);
+    });
+
+    const sortedGames = [...games].sort((a, b) => {
+      const aTime = a.endedAt?.getTime() ?? 0;
+      const bTime = b.endedAt?.getTime() ?? 0;
+      return bTime - aTime;
+    });
+
+    return sortedGames.map((game) => {
       const dateKey = game.endedAt
         ? new Intl.DateTimeFormat('en-CA').format(game.endedAt)
         : 'unknown';
@@ -84,8 +110,7 @@ export default function HistoryPage() {
             year: 'numeric',
           }).format(game.endedAt)
         : 'Unknown date';
-      const count = (dateCounter.get(dateKey) ?? 0) + 1;
-      dateCounter.set(dateKey, count);
+      const count = ordinalById.get(game.id) ?? 1;
       const label = count > 1 ? `${prettyDate} (${count})` : prettyDate;
       const scores = PLAYER_ORDER.reduce<Record<string, number | string>>(
         (acc, playerId) => {
@@ -104,6 +129,11 @@ export default function HistoryPage() {
       };
     });
   }, [games]);
+
+  const taggingGame = useMemo(
+    () => games.find((game) => game.id === taggingContext?.id) ?? null,
+    [games, taggingContext],
+  );
 
   return (
     <div className="history-page">
@@ -176,7 +206,14 @@ export default function HistoryPage() {
                   </thead>
                   <tbody>
                     {tableRows.map((row) => (
-                      <tr key={row.id}>
+                      <tr
+                        key={row.id}
+                        className={row.tag ? undefined : 'clickable-row'}
+                        onClick={() => {
+                          if (row.tag) return;
+                          setTaggingContext({ id: row.id, label: row.label });
+                        }}
+                      >
                         <td>{row.label}</td>
                         <td>{row.rounds}</td>
                         {PLAYER_ORDER.map((playerId) => (
@@ -191,6 +228,35 @@ export default function HistoryPage() {
             )}
           </section>
         </>
+      ) : null}
+      {taggingGame ? (
+        <div className="modal-overlay" onClick={() => setTaggingContext(null)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <header className="modal-header">
+              <div>
+                <p className="eyebrow">Tag Game</p>
+                <h3>{taggingContext?.label ?? 'Game'}</h3>
+                <p className="text-muted">
+                  Assign a tag. Suggestions reuse your recent tags and the most recent game.
+                </p>
+              </div>
+              <button className="secondary-button ghost" onClick={() => setTaggingContext(null)}>
+                ✕
+              </button>
+            </header>
+            <TagEditor
+              gameId={taggingGame.id}
+              currentTag={taggingGame.tag ?? null}
+              autoFocus
+              onTagChange={(next) => {
+                setGames((prev) =>
+                  prev.map((game) => (game.id === taggingGame.id ? { ...game, tag: next } : game)),
+                );
+                setTaggingContext(null);
+              }}
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );

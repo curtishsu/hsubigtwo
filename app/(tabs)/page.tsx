@@ -142,14 +142,14 @@ export default function HomePage() {
         </button>
         {error ? <p className="error-text">{error}</p> : null}
         <div className="recent-result-card">
-          <div className="recent-result-header">
-            <p className="recent-result-title">Last completed match</p>
-            {recentGame ? (
-              <span className="recent-result-rounds">
-                {recentGame.roundsPlayed}/{recentGame.totalRounds} rounds
-              </span>
-            ) : null}
-          </div>
+        <div className="recent-result-header">
+          <p className="recent-result-title">Last match</p>
+          {recentGame ? (
+            <span className="recent-result-rounds">
+              {recentGame.roundsPlayed} rounds
+            </span>
+          ) : null}
+        </div>
           {isRecentGameLoading ? (
             <p className="recent-result-message">Loading results…</p>
           ) : recentGame ? (

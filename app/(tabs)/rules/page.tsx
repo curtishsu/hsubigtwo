@@ -13,23 +13,34 @@ export default function RulesPage() {
         <ol className="rules-list">
           <li>
             <strong>Straight flush (同花连号)</strong>
-            <p>Same suit and consecutive values. Example: 10♠ J♠ Q♠ K♠ A♠</p>
+            <p>Same suit and consecutive values.</p>
+            <p className="example">Example: 10♠ J♠ Q♠ K♠ A♠</p>
           </li>
           <li>
             <strong>Four of a kind + one (四张相同加一)</strong>
-            <p>Four cards of the same rank plus any kicker. Example: A♠ A♥ A♦ A♣ + K♠</p>
+            <p>Four cards of the same rank plus any kicker.</p>
+            <p className="example">
+              Example: A♠ A<span className="suit red">♥</span> A<span className="suit red">♦</span> A♣ + K♠
+            </p>
           </li>
           <li>
             <strong>Full house (三张相同 + 两张相同)</strong>
-            <p>Three of a kind with a pair. Example: K♠ K♥ K♦ 10♣ 10♠</p>
+            <p>Three of a kind with a pair.</p>
+            <p className="example">
+              Example: K♠ K<span className="suit red">♥</span> K<span className="suit red">♦</span> 10♣ 10♠
+            </p>
           </li>
           <li>
             <strong>Flush (同花)</strong>
-            <p>All cards same suit. Example: 2♠ 5♠ 7♠ 9♠ K♠</p>
+            <p>All cards same suit.</p>
+            <p className="example">Example: 2♠ 5♠ 7♠ 9♠ K♠</p>
           </li>
           <li>
             <strong>Straight (连号)</strong>
-            <p>Any five consecutive ranks. Example: 5♣ 6♦ 7♠ 8♥ 9♣</p>
+            <p>Any five consecutive ranks.</p>
+            <p className="example">
+              Example: 5♣ 6<span className="suit red">♦</span> 7♠ 8<span className="suit red">♥</span> 9♣
+            </p>
           </li>
         </ol>
       </section>

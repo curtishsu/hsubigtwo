@@ -7,13 +7,13 @@ import {
   endGame,
   setRoundScore,
   toggleHideScores,
-  updateGameTag,
   updateTotalRounds,
   type RoundScoreDoc,
 } from '../../lib/firestore-helpers';
 import { PLAYER_ORDER, PLAYER_PROFILES, type PlayerInitial } from '../../lib/constants';
 import { useActiveGameId, useLiveGame } from '../../hooks/useActiveGame';
 import { RoundWithScores, useRoundsWithScores } from '../../hooks/useRounds';
+import { TagEditor } from '../components/TagEditor';
 
 type EditingCell = { roundIndex: number; playerId: PlayerInitial } | null;
 
@@ -31,15 +31,11 @@ export default function GamePage() {
   const [ending, setEnding] = useState(false);
   const [editing, setEditing] = useState<EditingCell>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tagDraft, setTagDraft] = useState('');
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (game?.totalRounds) {
       setRoundsInput(game.totalRounds);
-    }
-    if (game) {
-      setTagDraft(game.tag ?? '');
     }
   }, [game]);
 
@@ -246,17 +242,6 @@ export default function GamePage() {
     }
   };
 
-  const handleUpdateTag = async () => {
-    if (!game) return;
-    try {
-      await updateGameTag(game.id, tagDraft);
-      setFeedback('Updated tag');
-      setTimeout(() => setFeedback(null), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to update tag.');
-    }
-  };
-
   const handleHideToggle = async () => {
     if (!game) return;
     try {
@@ -326,23 +311,27 @@ export default function GamePage() {
 
   return (
     <main className="game-screen">
-      <header className="game-header">
-        <div className="game-title">
-          <h1>Big Two</h1>
-          <p>{startedDate}</p>
-        </div>
-        <div className="game-controls">
+      <header className="game-header" style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', position: 'relative' }}>
+        <div className="game-controls" style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
           <button className="menu-toggle" onClick={() => setMenuOpen((prev) => !prev)}>
             ☰
           </button>
         </div>
+        <h1 style={{ margin: 0 }}>Hsu Big Two</h1>
+        <p style={{ margin: '0.25rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {startedDate}
+          {game.tag ? (
+            <>
+              <span style={{ color: 'rgba(16, 24, 40, 0.4)' }}>|</span>
+              <span className="tag-chip" style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem' }}>
+                <span>{game.tag}</span>
+              </span>
+            </>
+          ) : null}
+        </p>
       </header>
 
       <section className="game-status">
-        <div className="status-pills">
-          {game.tag ? <div className="status-pill neutral">Tag: {game.tag}</div> : null}
-        </div>
-        {feedback ? <span className="feedback">{feedback}</span> : null}
         {error ? <span className="error-text">{error}</span> : null}
       </section>
 
@@ -401,11 +390,11 @@ export default function GamePage() {
       </section>
 
       <section className={game.hideScores ? 'totals blurred' : 'totals'}>
-        <h2>Grand totals</h2>
+        <h2>Totals</h2>
         <div className="totals-grid">
           {PLAYER_ORDER.map((playerId) => (
             <div key={playerId} className="total-chip">
-              <span>{playerId}</span>
+              <span>{PLAYER_PROFILES[playerId].fullName}</span>
               <strong>{totals[playerId]}</strong>
             </div>
           ))}
@@ -415,59 +404,58 @@ export default function GamePage() {
       {menuOpen ? (
         <aside className="game-menu">
           <header>
-            <h2>Game options</h2>
+            <h2>Game Options</h2>
             <button onClick={() => setMenuOpen(false)}>✕</button>
           </header>
           <div className="menu-content">
-            <div className="menu-section">
-              <label htmlFor="rounds-total">Number of rounds</label>
+            <div className="menu-section menu-section--rounds">
+              <label className="menu-section-title" htmlFor="rounds-total">
+                Number of Rounds
+              </label>
               <input
                 id="rounds-total"
                 type="number"
                 min={1}
                 max={30}
                 value={roundsInput}
+                aria-label="Number of rounds"
                 onChange={(event) => setRoundsInput(Number(event.target.value))}
               />
-              <button onClick={handleUpdateRounds} className="secondary-button">
+              <button
+                onClick={handleUpdateRounds}
+                className="update-rounds-button"
+              >
                 Update rounds
               </button>
             </div>
             <div className="menu-section">
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={game.hideScores}
-                  onChange={handleHideToggle}
-                />
-                <span>Hide scores</span>
+              <label className="menu-section-title" htmlFor="game-tag">
+                Tag Game
               </label>
+              <TagEditor
+                gameId={game.id}
+                currentTag={game.tag ?? null}
+                inputId="game-tag"
+                onTagChange={(next) => {
+                  setFeedback(next ? 'Tag saved' : 'Tag removed');
+                  setTimeout(() => setFeedback(null), 2000);
+                }}
+              />
             </div>
             <div className="menu-section">
-              <label htmlFor="game-tag">Tag this game</label>
-              <input
-                id="game-tag"
-                type="text"
-                value={tagDraft}
-                placeholder="e.g. Christmas 2025"
-                maxLength={40}
-                onChange={(event) => setTagDraft(event.target.value)}
-              />
-              <button onClick={handleUpdateTag} className="secondary-button">
-                Save tag
-              </button>
-            </div>
-            <div className="menu-section column">
-              <button
-                onClick={handleEndGame}
-                className="primary-button"
-                disabled={ending}
-              >
-                {ending ? 'Ending…' : 'End game'}
-              </button>
-              <button onClick={handleAbandonGame} className="danger-button">
-                Discard game
-              </button>
+              <div className="menu-section-title">Game State</div>
+              <div className="game-state-actions">
+                <button
+                  onClick={handleEndGame}
+                  className="primary-button"
+                  disabled={ending}
+                >
+                  {ending ? 'Ending…' : 'End game'}
+                </button>
+                <button onClick={handleAbandonGame} className="danger-button">
+                  Discard game
+                </button>
+              </div>
             </div>
           </div>
         </aside>
