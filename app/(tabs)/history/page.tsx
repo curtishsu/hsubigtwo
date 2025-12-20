@@ -131,7 +131,7 @@ export default function HistoryPage() {
                       {playerId}
                     </div>
                     <div className="summary-content">
-                      <h3>{PLAYER_PROFILES[playerId].displayName}</h3>
+                      <h3>{PLAYER_PROFILES[playerId].fullName}</h3>
                       <dl>
                         <div>
                           <dt>1st</dt>

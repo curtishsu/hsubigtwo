@@ -9,6 +9,7 @@ import {
   toggleHideScores,
   updateGameTag,
   updateTotalRounds,
+  type RoundScoreDoc,
 } from '../../lib/firestore-helpers';
 import { PLAYER_ORDER, PLAYER_PROFILES, type PlayerInitial } from '../../lib/constants';
 import { useActiveGameId, useLiveGame } from '../../hooks/useActiveGame';
@@ -162,10 +163,34 @@ export default function GamePage() {
     try {
       await setRoundScore(game.id, round.id, editing.playerId, value);
       setFeedback(`Saved ${value} for ${editing.playerId}`);
-      const nextCell = findNextCell(editing.roundIndex, editing.playerId, rounds);
-      if (nextCell && value !== 1) {
+      const existingScore = round.scores[editing.playerId];
+      const simulatedScore: RoundScoreDoc = existingScore
+        ? { ...existingScore, points: value }
+        : {
+            id: `${round.id}-${editing.playerId}`,
+            playerId: editing.playerId,
+            points: value,
+            enteredAt: null,
+          };
+      const simulatedRound: RoundWithScores = {
+        ...round,
+        scores: {
+          ...round.scores,
+          [editing.playerId]: simulatedScore,
+        },
+      };
+      const simulatedRounds = rounds.map((entry, idx) =>
+        idx === editing.roundIndex ? simulatedRound : entry,
+      );
+      const nextCell = findNextCell(editing.roundIndex, editing.playerId, simulatedRounds);
+      const roundCompleted = PLAYER_ORDER.every(
+        (playerId) => simulatedRound.scores[playerId]?.points != null,
+      );
+      if (roundCompleted) {
+        clearEditing();
+      } else if (nextCell) {
         setEditing(nextCell);
-      } else if (!nextCell) {
+      } else {
         setEditing(null);
       }
     } catch (err) {
@@ -456,12 +481,13 @@ export default function GamePage() {
         <div className="keypad-overlay" onClick={clearEditing}>
           <div className="keypad" onClick={(event) => event.stopPropagation()}>
             <header className="keypad-header">
-              <div>
-                <p className="eyebrow">Editing</p>
-                <h3>
-                  Round {rounds[editing.roundIndex]?.roundNumber} · Player {editing.playerId}
-                </h3>
-              </div>
+            <div>
+              <p className="eyebrow">Editing</p>
+              <h3>
+                Round {rounds[editing.roundIndex]?.roundNumber} ·{' '}
+                {PLAYER_PROFILES[editing.playerId].displayName}
+              </h3>
+            </div>
               <button onClick={clearEditing} className="secondary-button ghost">
                 Done
               </button>

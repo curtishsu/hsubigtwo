@@ -17,7 +17,7 @@ export default function GameEndPage() {
   const [results, setResults] = useState<ResultWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visibleRanks, setVisibleRanks] = useState<Set<number>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -34,7 +34,7 @@ export default function GameEndPage() {
         if (!mounted) return;
         const ordered = rawResults.sort((a, b) => a.rank - b.rank).map((entry) => ({
           ...entry,
-          displayName: PLAYER_PROFILES[entry.playerId].displayName,
+          displayName: PLAYER_PROFILES[entry.playerId].fullName,
         }));
         setResults(ordered as ResultWithProfile[]);
       } catch (err) {
@@ -58,23 +58,30 @@ export default function GameEndPage() {
     return [...results].sort((a, b) => b.rank - a.rank);
   }, [results]);
 
+  const rankSequence = useMemo(() => revealOrder.map((entry) => entry.rank), [revealOrder]);
+
+  const visibleRankSet = useMemo(
+    () => new Set(rankSequence.slice(0, Math.max(visibleCount, 0))),
+    [rankSequence, visibleCount],
+  );
+
   useEffect(() => {
-    if (!revealOrder.length) return;
-    setVisibleRanks(new Set());
+    if (!rankSequence.length) {
+      setVisibleCount(0);
+      return;
+    }
+    setVisibleCount(1);
     const interval = setInterval(() => {
-      setVisibleRanks((prev) => {
-        const next = new Set(prev);
-        const nextIndex = next.size;
-        if (nextIndex >= revealOrder.length) {
+      setVisibleCount((prev) => {
+        if (prev >= rankSequence.length) {
           clearInterval(interval);
-          return next;
+          return prev;
         }
-        next.add(revealOrder[nextIndex].rank);
-        return next;
+        return prev + 1;
       });
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
-  }, [revealOrder]);
+  }, [rankSequence]);
 
   if (loading) {
     return (
@@ -123,7 +130,7 @@ export default function GameEndPage() {
 
       <section className="podium">
         {displayOrder.map((entry) => {
-          if (!visibleRanks.has(entry.rank)) {
+              if (!visibleRankSet.has(entry.rank)) {
             return null;
           }
           const isWinner = entry.rank === 1;

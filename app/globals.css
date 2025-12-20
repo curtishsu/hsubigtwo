@@ -135,6 +135,45 @@ h4 {
   color: var(--text-muted);
 }
 
+.recent-result-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 18px;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px -30px rgba(15, 23, 42, 0.45);
+  width: 100%;
+  display: grid;
+  gap: 0.85rem;
+  text-align: left;
+}
+
+.recent-result-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.recent-result-title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(16, 24, 40, 0.6);
+}
+
+.recent-result-rounds {
+  font-size: 0.75rem;
+  color: rgba(16, 24, 40, 0.7);
+  font-weight: 600;
+}
+
+.recent-result-message {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
 .active-game {
   display: grid;
   gap: 0.75rem;
@@ -592,12 +631,12 @@ h4 {
 .podium-card {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 18px;
-  padding: 1.25rem;
+  padding: 1rem;
   display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 1rem;
+  grid-template-columns: 56px 1fr;
+  gap: 0.75rem;
   align-items: center;
-  box-shadow: 0 18px 40px -20px rgba(16, 24, 40, 0.5);
+  box-shadow: 0 14px 30px -20px rgba(16, 24, 40, 0.45);
 }
 
 .podium-card.reveal {
@@ -619,29 +658,45 @@ h4 {
 }
 
 .avatar.large {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  font-size: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  font-size: 1.8rem;
 }
 
 .podium-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.podium-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
   text-align: left;
 }
 
 .podium-content .placement {
   margin: 0;
-  font-weight: 600;
+  font-size: 0.75rem;
   color: rgba(16, 24, 40, 0.6);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.podium-content h2 {
-  margin: 0.25rem 0;
+.podium-content h3 {
+  margin: 0;
+  font-size: 1rem;
 }
 
 .podium-content .points {
   margin: 0;
   color: rgba(16, 24, 40, 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: right;
 }
 
 .end-footer {
