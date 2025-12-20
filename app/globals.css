@@ -314,6 +314,16 @@ h4 {
   color: rgba(16, 24, 40, 0.6);
 }
 
+.game-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.game-title p {
+  margin: 0;
+}
+
 .game-controls {
   display: flex;
   gap: 0.5rem;

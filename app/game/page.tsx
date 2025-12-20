@@ -327,7 +327,7 @@ export default function GamePage() {
   return (
     <main className="game-screen">
       <header className="game-header">
-        <div>
+        <div className="game-title">
           <h1>Big Two</h1>
           <p>{startedDate}</p>
         </div>
@@ -340,10 +340,6 @@ export default function GamePage() {
 
       <section className="game-status">
         <div className="status-pills">
-          <div className="status-pill">
-            <span className="status-indicator" />
-            <span>Round {currentRoundLabel}</span>
-          </div>
           {game.tag ? <div className="status-pill neutral">Tag: {game.tag}</div> : null}
         </div>
         {feedback ? <span className="feedback">{feedback}</span> : null}
@@ -481,13 +477,12 @@ export default function GamePage() {
         <div className="keypad-overlay" onClick={clearEditing}>
           <div className="keypad" onClick={(event) => event.stopPropagation()}>
             <header className="keypad-header">
-            <div>
-              <p className="eyebrow">Editing</p>
-              <h3>
-                Round {rounds[editing.roundIndex]?.roundNumber} ·{' '}
-                {PLAYER_PROFILES[editing.playerId].displayName}
-              </h3>
-            </div>
+              <div>
+                <h3>
+                  Round {rounds[editing.roundIndex]?.roundNumber} ·{' '}
+                  {PLAYER_PROFILES[editing.playerId].displayName}
+                </h3>
+              </div>
               <button onClick={clearEditing} className="secondary-button ghost">
                 Done
               </button>
