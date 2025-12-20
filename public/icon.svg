@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="26" fill="#0F172A" />
+  <path
+    d="M34 38h60v52H34z"
+    fill="none"
+    stroke="#F97316"
+    strokeWidth="9"
+    strokeLinejoin="round"
+    strokeLinecap="round"
+  />
+  <path
+    d="M60 48l-4 32 22-22M68 48l4 32-22-22"
+    stroke="#F97316"
+    strokeWidth="9"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    fill="none"
+  />
+</svg>
+

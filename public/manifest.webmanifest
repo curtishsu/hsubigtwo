@@ -1,0 +1,21 @@
+{
+  "name": "Big Two Scorekeeper",
+  "short_name": "Big Two",
+  "description": "Keep score for your family Big Two games, track rounds, and keep history.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F172A",
+  "theme_color": "#F97316",
+  "categories": ["productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "128x128 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
