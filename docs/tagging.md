@@ -13,3 +13,10 @@ The UX for the tag:
 
 ### Additional entry points. 
 If a game does not have a tag, by clicking on it on the history page, an interstitial opens up where you can assign it a tag. The tagging and tag suggestion should is the same as above. There is a box where the user can put in the name of the tag, and there is a list of suggestions below. 
+
+
+## Tag Editing Update
+Currently on the history page, I'm only able to tag games that do not have a tag. However, I would like to be able to edit tags on games that have tags. I should be able to click on any row and that opens up the the edit tag interstitial. Similar to how there are suggestions when tagging a game, there should be the same flow here.
+
+## Update to the tag add interstitial from history
+Currently, the tag add interstitial from the history ledger closes as soon as a tag is added to a past game. Now, the tag should not automatically close. instead, there should be a button on the bottom right that says 'Save'. Once a user clicks save does the tag apply. The trash can button should be to the left

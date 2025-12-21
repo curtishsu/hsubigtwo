@@ -141,8 +141,10 @@ export default function HistoryPage() {
   );
 
   const handleDelete = async (gameId: string) => {
+    let game: GameWithResults | undefined;
+
     try {
-      const game = games.find((g) => g.id === gameId);
+      game = games.find((g) => g.id === gameId);
       if (!game) return;
 
       // Close the modal

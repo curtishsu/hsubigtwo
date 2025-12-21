@@ -127,3 +127,4 @@ await Promise.all(players.map(initial =>
 - Update the deployment pipeline to include `firebase deploy --only firestore,functions` when applicable.
 - Ensure analytics (e.g., BigQuery export) is re-configured if it previously depended on the SQL backend.
 
+
