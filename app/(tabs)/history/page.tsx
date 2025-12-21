@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   fetchCompletedGames,
+  deleteGame,
+  restoreGame,
   type GameWithResults,
 } from '../../../lib/firestore-helpers';
 import { PLAYER_ORDER, PLAYER_PROFILES } from '../../../lib/constants';
 import { TagEditor } from '../../components/TagEditor';
+import { Toast } from '../../components/Toast';
 
 type PlacementSummary = Record<
   string,
@@ -25,6 +28,8 @@ export default function HistoryPage() {
   const [taggingContext, setTaggingContext] = useState<{ id: string; label: string } | null>(
     null,
   );
+  const [deletedGame, setDeletedGame] = useState<GameWithResults | null>(null);
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -135,6 +140,61 @@ export default function HistoryPage() {
     [games, taggingContext],
   );
 
+  const handleDelete = async (gameId: string) => {
+    try {
+      const game = games.find((g) => g.id === gameId);
+      if (!game) return;
+
+      // Close the modal
+      setTaggingContext(null);
+
+      // Remove from UI immediately
+      setGames((prev) => prev.filter((g) => g.id !== gameId));
+      
+      // Delete from database
+      const deleted = await deleteGame(gameId);
+      
+      // Store for undo
+      setDeletedGame(deleted);
+      setShowToast(true);
+    } catch (err) {
+      console.error('Error deleting game:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete game');
+      // Restore game to UI on error
+      if (game) {
+        setGames((prev) => [...prev, game]);
+      }
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!deletedGame) return;
+
+    try {
+      // Restore to database
+      await restoreGame(deletedGame);
+      
+      // Restore to UI
+      setGames((prev) => [...prev, deletedGame].sort((a, b) => {
+        const aTime = a.endedAt?.getTime() ?? 0;
+        const bTime = b.endedAt?.getTime() ?? 0;
+        return bTime - aTime;
+      }));
+      
+      // Clear toast
+      setShowToast(false);
+      setDeletedGame(null);
+    } catch (err) {
+      console.error('Error restoring game:', err);
+      setError(err instanceof Error ? err.message : 'Failed to restore game');
+    }
+  };
+
+  const handleToastDismiss = () => {
+    setShowToast(false);
+    setDeletedGame(null);
+  };
+
   return (
     <div className="history-page">
       <header>
@@ -208,9 +268,8 @@ export default function HistoryPage() {
                     {tableRows.map((row) => (
                       <tr
                         key={row.id}
-                        className={row.tag ? undefined : 'clickable-row'}
+                        className="clickable-row"
                         onClick={() => {
-                          if (row.tag) return;
                           setTaggingContext({ id: row.id, label: row.label });
                         }}
                       >
@@ -252,11 +311,32 @@ export default function HistoryPage() {
                 setGames((prev) =>
                   prev.map((game) => (game.id === taggingGame.id ? { ...game, tag: next } : game)),
                 );
-                setTaggingContext(null);
               }}
             />
+            <div className="modal-actions">
+              <button
+                className="modal-delete-button"
+                onClick={() => handleDelete(taggingGame.id)}
+                aria-label="Delete game"
+              >
+                🗑️
+              </button>
+              <button
+                className="primary-button"
+                onClick={() => setTaggingContext(null)}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
+      ) : null}
+      {showToast && deletedGame ? (
+        <Toast
+          message="Game Deleted"
+          onUndo={handleUndo}
+          onDismiss={handleToastDismiss}
+        />
       ) : null}
     </div>
   );

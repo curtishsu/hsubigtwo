@@ -41,7 +41,7 @@ export function TagEditor({
   autoFocus,
   inputId,
 }: TagEditorProps) {
-  const [inputValue, setInputValue] = useState(currentTag ?? '');
+  const [inputValue, setInputValue] = useState('');
   const [localTag, setLocalTag] = useState<string | null>(currentTag);
   const [recentGames, setRecentGames] = useState<GameDoc[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -68,7 +68,6 @@ export function TagEditor({
   }, []);
 
   useEffect(() => {
-    setInputValue(currentTag ?? '');
     setLocalTag(currentTag);
   }, [currentTag]);
 
@@ -92,7 +91,6 @@ export function TagEditor({
   const displayTag = localTag ?? currentTag;
 
   const suggestions = useMemo(() => {
-    if (displayTag) return [];
     const trimmed = inputValue.trim();
     const currentKey = (displayTag ?? '').trim().toLowerCase();
     if (!trimmed) {
@@ -174,7 +172,7 @@ export function TagEditor({
         <div className="tag-input-wrapper">
           <input
             type="text"
-            value={displayTag ? '' : inputValue}
+            value={inputValue}
             placeholder=""
             id={inputId}
             onChange={(event) => setInputValue(event.target.value)}
@@ -185,11 +183,10 @@ export function TagEditor({
               }
             }}
             disabled={saving}
-            readOnly={!!displayTag}
             autoFocus={autoFocus}
           />
           <div className="tag-chip-slot">
-            {displayTag ? (
+            {displayTag && !inputValue ? (
               <div className="tag-chip">
                 <span>{displayTag}</span>
                 <button

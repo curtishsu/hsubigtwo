@@ -27,7 +27,6 @@ export default function GamePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [roundsInput, setRoundsInput] = useState(game?.totalRounds ?? 10);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [ending, setEnding] = useState(false);
   const [editing, setEditing] = useState<EditingCell>(null);
   const [error, setError] = useState<string | null>(null);
@@ -153,63 +152,65 @@ export default function GamePage() {
 
   const handleValueSelect = async (value: number) => {
     if (!editing || !game) return;
-    setSaving(true);
     const round = rounds[editing.roundIndex];
     if (!round) return;
+
+    // Calculate next cell immediately based on optimistic update
+    const existingScore = round.scores[editing.playerId];
+    const simulatedScore: RoundScoreDoc = existingScore
+      ? { ...existingScore, points: value }
+      : {
+          id: `${round.id}-${editing.playerId}`,
+          playerId: editing.playerId,
+          points: value,
+          enteredAt: null,
+        };
+    const simulatedRound: RoundWithScores = {
+      ...round,
+      scores: {
+        ...round.scores,
+        [editing.playerId]: simulatedScore,
+      },
+    };
+    const simulatedRounds = rounds.map((entry, idx) =>
+      idx === editing.roundIndex ? simulatedRound : entry,
+    );
+    const nextCell = findNextCell(editing.roundIndex, editing.playerId, simulatedRounds);
+    const roundCompleted = PLAYER_ORDER.every(
+      (playerId) => simulatedRound.scores[playerId]?.points != null,
+    );
+
+    // Update UI immediately (optimistic update)
+    if (roundCompleted) {
+      clearEditing();
+    } else if (nextCell) {
+      setEditing(nextCell);
+    } else {
+      setEditing(null);
+    }
+
+    // Save to Firebase in background
     try {
       await setRoundScore(game.id, round.id, editing.playerId, value);
       setFeedback(`Saved ${value} for ${editing.playerId}`);
-      const existingScore = round.scores[editing.playerId];
-      const simulatedScore: RoundScoreDoc = existingScore
-        ? { ...existingScore, points: value }
-        : {
-            id: `${round.id}-${editing.playerId}`,
-            playerId: editing.playerId,
-            points: value,
-            enteredAt: null,
-          };
-      const simulatedRound: RoundWithScores = {
-        ...round,
-        scores: {
-          ...round.scores,
-          [editing.playerId]: simulatedScore,
-        },
-      };
-      const simulatedRounds = rounds.map((entry, idx) =>
-        idx === editing.roundIndex ? simulatedRound : entry,
-      );
-      const nextCell = findNextCell(editing.roundIndex, editing.playerId, simulatedRounds);
-      const roundCompleted = PLAYER_ORDER.every(
-        (playerId) => simulatedRound.scores[playerId]?.points != null,
-      );
-      if (roundCompleted) {
-        clearEditing();
-      } else if (nextCell) {
-        setEditing(nextCell);
-      } else {
-        setEditing(null);
-      }
+      setTimeout(() => setFeedback(null), 2000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to save score.';
       setError(message);
-    } finally {
-      setSaving(false);
-      setTimeout(() => setFeedback(null), 2000);
     }
   };
 
   const handleClearValue = async () => {
     if (!editing || !game) return;
-    setSaving(true);
     const round = rounds[editing.roundIndex];
     if (!round) return;
+    
+    // Save to Firebase in background
     try {
       await setRoundScore(game.id, round.id, editing.playerId, null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to clear score.';
       setError(message);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -479,7 +480,6 @@ export default function GamePage() {
               {keypadNumbers.map((value) => (
                 <button
                   key={value}
-                  disabled={saving}
                   className={
                     currentEditingValue === value ? 'keypad-btn selected' : 'keypad-btn'
                   }
@@ -490,13 +490,13 @@ export default function GamePage() {
               ))}
             </div>
             <div className="keypad-actions">
-              <button onClick={handlePrevCell} disabled={saving} className="secondary-button">
+              <button onClick={handlePrevCell} className="secondary-button">
                 ← Prev
               </button>
-              <button onClick={handleClearValue} disabled={saving} className="secondary-button">
+              <button onClick={handleClearValue} className="secondary-button">
                 Clear
               </button>
-              <button onClick={handleNextCell} disabled={saving} className="secondary-button">
+              <button onClick={handleNextCell} className="secondary-button">
                 Next →
               </button>
             </div>

@@ -192,7 +192,6 @@ export async function setRoundScore(
   const scoreRef = roundScoreDoc(gameId, roundId, playerId);
   if (points === null) {
     await deleteDoc(scoreRef).catch(() => undefined);
-    await syncRoundsProgress(gameId);
     return;
   }
 
@@ -209,8 +208,6 @@ export async function setRoundScore(
     },
     { merge: true },
   );
-
-  await syncRoundsProgress(gameId);
 }
 
 export async function endGame(gameId: string, status: GameStatus = 'completed') {
@@ -485,5 +482,87 @@ export async function updateGameTag(gameId: string, tag: string | null) {
   await updateDoc(gameDoc(gameId), {
     tag: trimmed,
   });
+}
+
+export async function deleteGame(gameId: string): Promise<GameWithResults> {
+  const gameRef = gameDoc(gameId);
+  const gameSnapshot = await getDoc(gameRef);
+  
+  if (!gameSnapshot.exists()) {
+    throw new Error('Game not found.');
+  }
+
+  // Fetch game data and results for undo functionality
+  const gameData = gameSnapshot.data();
+  const results = await fetchGameResults(gameId);
+  const deletedGame: GameWithResults = {
+    id: gameSnapshot.id,
+    startedAt: gameData.startedAt?.toDate?.() ?? null,
+    endedAt: gameData.endedAt?.toDate?.() ?? null,
+    totalRounds: gameData.totalRounds,
+    roundsPlayed: gameData.roundsPlayed,
+    status: gameData.status,
+    hideScores: gameData.hideScores ?? false,
+    tag: gameData.tag ?? null,
+    notes: gameData.notes ?? null,
+    results,
+  };
+
+  // Use batch to delete all subcollections and the game document
+  const batch = writeBatch(db);
+
+  // Delete results
+  const resultsSnapshot = await getDocs(collection(gameRef, 'results'));
+  resultsSnapshot.docs.forEach((docSnapshot) => {
+    batch.delete(docSnapshot.ref);
+  });
+
+  // Delete rounds and their scores
+  const roundsSnapshot = await getDocs(roundsCollection(gameId));
+  await Promise.all(
+    roundsSnapshot.docs.map(async (roundDocSnapshot) => {
+      const scoresSnapshot = await getDocs(collection(roundDocSnapshot.ref, 'scores'));
+      scoresSnapshot.docs.forEach((scoreDoc) => {
+        batch.delete(scoreDoc.ref);
+      });
+      batch.delete(roundDocSnapshot.ref);
+    }),
+  );
+
+  // Delete the game document itself
+  batch.delete(gameRef);
+
+  await batch.commit();
+
+  return deletedGame;
+}
+
+export async function restoreGame(gameData: GameWithResults): Promise<void> {
+  const gameRef = gameDoc(gameData.id);
+  const batch = writeBatch(db);
+
+  // Restore the game document
+  batch.set(gameRef, {
+    startedAt: gameData.startedAt,
+    endedAt: gameData.endedAt,
+    totalRounds: gameData.totalRounds,
+    roundsPlayed: gameData.roundsPlayed,
+    status: gameData.status,
+    hideScores: gameData.hideScores,
+    tag: gameData.tag,
+    notes: gameData.notes,
+  });
+
+  // Restore results
+  gameData.results.forEach((result) => {
+    const resultRef = doc(collection(gameRef, 'results'), result.playerId);
+    batch.set(resultRef, {
+      playerId: result.playerId,
+      rank: result.rank,
+      totalPoints: result.totalPoints,
+    });
+  });
+
+  await batch.commit();
 }
 
