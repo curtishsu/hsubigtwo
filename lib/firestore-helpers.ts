@@ -50,6 +50,7 @@ export interface GameResultDoc {
   playerId: PlayerInitial;
   rank: number;
   totalPoints: number;
+  roundsWon: number;
 }
 
 export interface GameWithResults extends GameDoc {
@@ -229,18 +230,27 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
     C: 0,
   };
 
+  const roundsWonMatrix: Record<PlayerInitial, number> = {
+    A: 0,
+    Y: 0,
+    D: 0,
+    C: 0,
+  };
+
   let completedRounds = 0;
 
   await Promise.all(
     roundsSnapshot.docs.map(async (roundDocSnapshot) => {
       const scoresSnapshot = await getDocs(collection(roundDocSnapshot.ref, 'scores'));
       let completedForRound = true;
+      const pointsByPlayer: Partial<Record<PlayerInitial, number>> = {};
       scoresSnapshot.forEach((score) => {
         const data = score.data();
         const playerId = data.playerId as PlayerInitial;
         const points = data.points as number | undefined;
         if (playerId && typeof points === 'number') {
           scoreMatrix[playerId] += points;
+          pointsByPlayer[playerId] = points;
         } else {
           completedForRound = false;
         }
@@ -249,6 +259,14 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
         completedForRound = false;
       }
       if (completedForRound) {
+        // Each completed round must have exactly one player with 0 points.
+        const zeroPointPlayers = PLAYER_ORDER.filter((playerId) => pointsByPlayer[playerId] === 0);
+        if (zeroPointPlayers.length !== 1) {
+          throw new Error(
+            `Invalid round result: expected exactly one player with 0 points in round ${roundDocSnapshot.id}, but found ${zeroPointPlayers.length}.`,
+          );
+        }
+        roundsWonMatrix[zeroPointPlayers[0]] += 1;
         completedRounds += 1;
       }
     }),
@@ -267,6 +285,7 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
       playerId: entry.playerId,
       rank,
       totalPoints: entry.totalPoints,
+      roundsWon: roundsWonMatrix[entry.playerId] ?? 0,
     });
   });
 
@@ -384,6 +403,7 @@ export async function fetchGameResults(gameId: string): Promise<GameResultDoc[]>
       playerId: data.playerId as PlayerInitial,
       rank: data.rank as number,
       totalPoints: data.totalPoints as number,
+      roundsWon: typeof data.roundsWon === 'number' ? data.roundsWon : 0,
     };
   });
 }
@@ -560,6 +580,7 @@ export async function restoreGame(gameData: GameWithResults): Promise<void> {
       playerId: result.playerId,
       rank: result.rank,
       totalPoints: result.totalPoints,
+      roundsWon: result.roundsWon ?? 0,
     });
   });
 

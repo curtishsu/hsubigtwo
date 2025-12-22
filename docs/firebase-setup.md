@@ -60,6 +60,7 @@ await setDoc(doc(db, 'players', 'A'), {
 - Fields:
   - `rank` (number, 1–4)
   - `totalPoints` (number, >= 0)
+  - `roundsWon` (number, >= 0) — number of rounds won in the game (a round win is the player with `points == 0` for that round)
 
 ##### Subcollection: tags (`games/{gameId}/tags`)
 - Document ID: auto-generated.
@@ -126,5 +127,6 @@ await Promise.all(players.map(initial =>
 - Remove any Supabase-specific tooling, environment variables, and SQL scripts.
 - Update the deployment pipeline to include `firebase deploy --only firestore,functions` when applicable.
 - Ensure analytics (e.g., BigQuery export) is re-configured if it previously depended on the SQL backend.
+
 
 

@@ -125,12 +125,21 @@ export default function HistoryPage() {
         },
         {},
       );
+      const wins = PLAYER_ORDER.reduce<Record<string, number | string>>(
+        (acc, playerId) => {
+          const result = game.results.find((entry) => entry.playerId === playerId);
+          acc[`${playerId}_wins`] = result ? result.roundsWon : '--';
+          return acc;
+        },
+        {},
+      );
       return {
         id: game.id,
         label,
         rounds: game.totalRounds,
         tag: game.tag,
         ...scores,
+        ...wins,
       };
     });
   }, [games]);
@@ -261,7 +270,10 @@ export default function HistoryPage() {
                       <th>Day</th>
                       <th>Rounds</th>
                       {PLAYER_ORDER.map((playerId) => (
-                        <th key={playerId}>{playerId}</th>
+                        <th key={`${playerId}-points`}>{playerId} Pts</th>
+                      ))}
+                      {PLAYER_ORDER.map((playerId) => (
+                        <th key={`${playerId}-wins`}>{playerId} W</th>
                       ))}
                       <th>Tag</th>
                     </tr>
@@ -279,6 +291,9 @@ export default function HistoryPage() {
                         <td>{row.rounds}</td>
                         {PLAYER_ORDER.map((playerId) => (
                           <td key={playerId}>{row[playerId] ?? '--'}</td>
+                        ))}
+                        {PLAYER_ORDER.map((playerId) => (
+                          <td key={`${playerId}-wins`}>{row[`${playerId}_wins`] ?? '--'}</td>
                         ))}
                         <td>{row.tag ?? '—'}</td>
                       </tr>
