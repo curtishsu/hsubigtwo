@@ -276,6 +276,24 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
     .map(([playerId, totalPoints]) => ({ playerId: playerId as PlayerInitial, totalPoints }))
     .sort((a, b) => a.totalPoints - b.totalPoints);
 
+  // Break ties randomly (not seeded) so we always emit distinct ranks 1..4.
+  // This keeps the end-game reveal structure stable without needing "(tie)" UI.
+  for (let i = 0; i < sorted.length; ) {
+    let j = i + 1;
+    while (j < sorted.length && sorted[j].totalPoints === sorted[i].totalPoints) {
+      j += 1;
+    }
+    if (j - i > 1) {
+      for (let k = j - 1; k > i; k -= 1) {
+        const swapWith = i + Math.floor(Math.random() * (k - i + 1));
+        const tmp = sorted[k];
+        sorted[k] = sorted[swapWith];
+        sorted[swapWith] = tmp;
+      }
+    }
+    i = j;
+  }
+
   const batch = writeBatch(db);
 
   sorted.forEach((entry, index) => {
@@ -382,6 +400,25 @@ export async function fetchLatestCompletedGame(): Promise<GameDoc | null> {
   const data = docSnapshot.data();
   return {
     id: docSnapshot.id,
+    startedAt: data.startedAt?.toDate?.() ?? null,
+    endedAt: data.endedAt?.toDate?.() ?? null,
+    totalRounds: data.totalRounds,
+    roundsPlayed: data.roundsPlayed,
+    status: data.status,
+    hideScores: data.hideScores ?? false,
+    tag: data.tag ?? null,
+    notes: data.notes ?? null,
+  };
+}
+
+export async function fetchGame(gameId: string): Promise<GameDoc | null> {
+  const snapshot = await getDoc(gameDoc(gameId));
+  if (!snapshot.exists()) {
+    return null;
+  }
+  const data = snapshot.data();
+  return {
+    id: snapshot.id,
     startedAt: data.startedAt?.toDate?.() ?? null,
     endedAt: data.endedAt?.toDate?.() ?? null,
     totalRounds: data.totalRounds,

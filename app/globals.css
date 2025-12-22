@@ -819,6 +819,345 @@ h4 {
   text-align: center;
 }
 
+/* End-game reveal (new flow) */
+.end-reveal {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  user-select: none;
+  outline: none;
+}
+
+.end-reveal:focus-visible {
+  outline: 3px solid rgba(29, 78, 216, 0.35);
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+
+.end-reveal-header {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+}
+
+.end-reveal-title {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: 0.01em;
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.end-reveal-banner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 40px -30px rgba(15, 23, 42, 0.6);
+}
+
+.end-reveal-banner-text {
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  font-size: 1.7rem;
+  color: rgba(15, 23, 42, 0.92);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.end-reveal-banner-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.end-reveal-banner-label {
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.end-reveal-subtitle {
+  margin: 0;
+  color: rgba(16, 24, 40, 0.65);
+  font-size: 0.95rem;
+}
+
+.end-reveal-stage {
+  position: relative;
+  width: 100%;
+  min-height: min(560px, calc(100vh - 280px));
+  max-width: 680px;
+  /* Shared anchor for chip/confetti and the hero card. */
+  --hero-y: 40%;
+  /* Tune: how far above the hero center the chip should sit (no overlap). */
+  --chip-above-hero: clamp(170px, 20vh, 250px);
+}
+
+.end-stage-chip {
+  position: absolute;
+  left: 50%;
+  top: var(--hero-y);
+  transform: translate(-50%, calc(-50% - var(--chip-above-hero)));
+  z-index: 3;
+  pointer-events: none;
+}
+
+.end-stage-confetti {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Between chip and hero (visually centered). */
+  top: calc(var(--hero-y) - (var(--chip-above-hero) / 2));
+  height: 0;
+  pointer-events: none;
+  z-index: 2;
+  --confetti-inset: clamp(16px, 8vw, 90px);
+}
+
+.end-stage-confetti-burst {
+  position: absolute;
+  top: 0;
+  display: grid;
+  gap: 0.15rem;
+  pointer-events: none;
+}
+
+.end-stage-confetti-burst.left {
+  left: var(--confetti-inset);
+  justify-items: start;
+}
+
+.end-stage-confetti-burst.right {
+  right: var(--confetti-inset);
+  justify-items: end;
+}
+
+.end-stage-confetti-item {
+  position: relative;
+  top: 0;
+  font-size: 3.1rem;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation:
+    end-confetti-rise 2400ms linear both,
+    end-confetti-fade 2400ms ease-out both;
+}
+
+.end-stage-confetti-item.popper {
+  animation-delay: 0ms, 0ms;
+}
+
+.end-stage-confetti-item.streamer {
+  animation-delay: 140ms, 140ms;
+}
+
+@keyframes end-confetti-rise {
+  from {
+    transform: translate3d(0, 18px, 0) scale(0.9) rotate(-10deg);
+  }
+  to {
+    transform: translate3d(0, -62px, 0) scale(1.05) rotate(10deg);
+  }
+}
+
+@keyframes end-confetti-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.end-player-card {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: min(320px, 86vw);
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 60px -42px rgba(15, 23, 42, 0.65);
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  transition:
+    top 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    left 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    padding 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 800ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 250ms ease;
+}
+
+.end-player-card.size-hero {
+  width: min(440px, 94vw);
+  padding: 1.25rem 1.25rem 1.35rem;
+  border-radius: 22px;
+  box-shadow: 0 26px 80px -52px rgba(15, 23, 42, 0.7);
+}
+
+.end-player-card.entering {
+  opacity: 0;
+  animation: end-card-enter 320ms ease forwards;
+}
+
+@keyframes end-card-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0) scale(1);
+  }
+}
+
+.end-player-avatar {
+  position: relative;
+  overflow: hidden;
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 2rem;
+  color: rgba(15, 23, 42, 0.88);
+}
+
+.end-player-card.size-hero .end-player-avatar {
+  width: clamp(120px, 22vw, 148px);
+  height: clamp(120px, 22vw, 148px);
+  border-radius: clamp(26px, 4vw, 34px);
+  font-size: 3.2rem;
+}
+
+.end-player-card.size-hero .end-player-name {
+  font-size: 1.55rem;
+}
+
+.end-player-card.size-hero .end-player-points {
+  font-size: 1.1rem;
+}
+
+.end-player-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.end-player-avatar-fallback {
+  position: relative;
+  z-index: 0;
+}
+
+.end-player-avatar.is-loaded img {
+  opacity: 1;
+}
+
+.end-player-avatar.is-error img {
+  display: none;
+}
+
+.end-player-name {
+  font-weight: 800;
+  font-size: 1.25rem;
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.end-player-points {
+  font-weight: 600;
+  color: rgba(16, 24, 40, 0.7);
+}
+
+.end-player-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  background: rgba(16, 24, 40, 0.04);
+  color: rgba(15, 23, 42, 0.8);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.end-player-card.size-mini {
+  /* Prevent overlap: mini cards should never be wider than one dock slot. */
+  width: min(220px, calc((100% - (2 * var(--dock-gap))) / 3));
+  padding: 0.75rem 0.75rem 0.8rem;
+  border-radius: 18px;
+  top: var(--dock-y);
+  transform: translate(-50%, -50%) scale(0.92);
+  box-shadow: 0 18px 48px -38px rgba(15, 23, 42, 0.55);
+}
+
+.end-player-card.size-mini .end-player-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  font-size: 1.4rem;
+}
+
+.end-player-card.size-mini .end-player-name {
+  font-size: 1.05rem;
+}
+
+.end-player-card.size-mini .end-player-points {
+  font-size: 0.9rem;
+}
+
+.end-player-card.pos-hero {
+  left: 50%;
+  top: var(--hero-y);
+}
+
+.end-reveal-stage {
+  --dock-y: calc(100% - (112px + env(safe-area-inset-bottom)));
+  --dock-gap: 14px;
+}
+
+.end-player-card.pos-dock-left {
+  left: 16.666%;
+  top: var(--dock-y);
+}
+
+.end-player-card.pos-dock-center {
+  left: 50%;
+  top: var(--dock-y);
+}
+
+.end-player-card.pos-dock-right {
+  left: 83.333%;
+  top: var(--dock-y);
+}
+
 .end-header h1 {
   margin: 0;
   font-size: 2rem;
