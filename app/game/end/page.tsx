@@ -19,7 +19,7 @@ export default function GameEndPage() {
           setError('No completed games found.');
           return;
         }
-        router.replace(`/game/${latestGame.id}/end`);
+        router.replace(`/game/${latestGame.id}/end/loading`);
       } catch (err) {
         if (!mounted) return;
         setError(err instanceof Error ? err.message : 'Unable to load results.');

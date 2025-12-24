@@ -257,7 +257,7 @@ export default function GamePage() {
     setEnding(true);
     try {
       await endGame(game.id, 'completed');
-      await router.push(`/game/${game.id}/end`);
+      await router.push(`/game/${game.id}/end/loading`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to end game.');
     } finally {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { fetchGame, fetchGameResults, type GameResultDoc, type GameDoc } from '../../../../../lib/firestore-helpers';
 import { PLAYER_PROFILES, type PlayerInitial } from '../../../../../lib/constants';
 
@@ -41,13 +41,15 @@ function stepDurationMs(step: Step) {
     case 'show4':
     case 'show3':
     case 'show2':
-      return 1000;
+      // v3: keep docking snappy, but linger on the hero moment
+      return 1500;
     case 'dock4':
     case 'dock3':
     case 'dock2':
       return 800;
     case 'show1':
-      return 1400;
+      // v3: 1.5x longer hero moment for winner
+      return 2100;
     case 'celebrate':
       return 1400;
     case 'settled':
@@ -103,6 +105,7 @@ function ordinal(rank: number) {
 export default function EndGameRevealPage() {
   const params = useParams<{ gameId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const gameId = params?.gameId;
 
   const [game, setGame] = useState<GameDoc | null>(null);
@@ -119,9 +122,35 @@ export default function EndGameRevealPage() {
 
   const step = STEPS[Math.min(stepIndex, STEPS.length - 1)];
 
+  // v3: Always show the Results Loading interstitial first unless explicitly marked ready.
+  useEffect(() => {
+    if (!gameId) return;
+    const ready = searchParams.get('ready') === '1';
+    if (!ready) {
+      router.replace(`/game/${gameId}/end/loading`);
+    }
+  }, [gameId, router, searchParams]);
+
   const revealSeenKey = useMemo(() => {
     if (!gameId) return null;
     return `endRevealSeen:${gameId}`;
+  }, [gameId]);
+
+  // v3: Hydrate prefetched avatar URLs immediately (so reveal doesn't wait on avatar API calls).
+  useEffect(() => {
+    if (!gameId) return;
+    if (typeof window === 'undefined') return;
+    const key = `endAvatars:${gameId}`;
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      if (parsed && typeof parsed === 'object') {
+        setAvatarByPlayerId(parsed);
+      }
+    } catch {
+      // ignore
+    }
   }, [gameId]);
 
   const ranks = useMemo(() => {
@@ -194,8 +223,12 @@ export default function EndGameRevealPage() {
     let cancelled = false;
 
     (async () => {
+      // v3: Only fetch missing avatars; otherwise we'd re-randomize and cause delay.
+      const missing = results.filter((entry) => !avatarByPlayerId[entry.playerId]);
+      if (missing.length === 0) return;
+
       const pairs = await Promise.all(
-        results.map(async (entry) => {
+        missing.map(async (entry) => {
           try {
             const res = await fetch(
               `/api/avatars/random?playerId=${encodeURIComponent(entry.playerId)}&rank=${entry.rank}`,
@@ -211,17 +244,19 @@ export default function EndGameRevealPage() {
       );
 
       if (cancelled) return;
-      const next: Record<string, string> = {};
-      for (const [playerId, url] of pairs) {
-        if (url) next[playerId] = url;
-      }
-      setAvatarByPlayerId(next);
+      setAvatarByPlayerId((prev) => {
+        const next = { ...prev };
+        for (const [playerId, url] of pairs) {
+          if (url) next[playerId] = url;
+        }
+        return next;
+      });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [results]);
+  }, [results, avatarByPlayerId]);
 
   const clearTimer = () => {
     if (timeoutRef.current) {
@@ -347,11 +382,8 @@ export default function EndGameRevealPage() {
   const medal = bannerMedal(step);
 
   if (loading) {
-    return (
-      <div className="end-reveal" aria-busy>
-        <p className="text-muted">Gathering podium results…</p>
-      </div>
-    );
+    // v3: The dedicated /end/loading page handles loading; don't show an extra screen here.
+    return <div className="end-reveal" aria-busy />;
   }
 
   if (error) {
