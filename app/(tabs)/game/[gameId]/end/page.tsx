@@ -107,6 +107,7 @@ export default function EndGameRevealPage() {
 
   const [game, setGame] = useState<GameDoc | null>(null);
   const [results, setResults] = useState<ResultWithProfile[]>([]);
+  const [avatarByPlayerId, setAvatarByPlayerId] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -163,6 +164,7 @@ export default function EndGameRevealPage() {
             displayName: PLAYER_PROFILES[entry.playerId].fullName,
           }));
         setResults(enriched);
+        setAvatarByPlayerId({});
 
         // If user returns later, show settled state immediately.
         if (revealSeenKey && typeof window !== 'undefined') {
@@ -186,6 +188,40 @@ export default function EndGameRevealPage() {
       mounted = false;
     };
   }, [gameId, revealSeenKey]);
+
+  useEffect(() => {
+    if (results.length !== 4) return;
+    let cancelled = false;
+
+    (async () => {
+      const pairs = await Promise.all(
+        results.map(async (entry) => {
+          try {
+            const res = await fetch(
+              `/api/avatars/random?playerId=${encodeURIComponent(entry.playerId)}&rank=${entry.rank}`,
+              { cache: 'no-store' },
+            );
+            if (!res.ok) return [entry.playerId, ''] as const;
+            const data = (await res.json()) as { url?: string };
+            return [entry.playerId, data.url ?? ''] as const;
+          } catch {
+            return [entry.playerId, ''] as const;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+      const next: Record<string, string> = {};
+      for (const [playerId, url] of pairs) {
+        if (url) next[playerId] = url;
+      }
+      setAvatarByPlayerId(next);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [results]);
 
   const clearTimer = () => {
     if (timeoutRef.current) {
@@ -403,6 +439,7 @@ export default function EndGameRevealPage() {
             key={`rank-2-${ranks.second.playerId}`}
             entry={ranks.second}
             rank={2}
+            avatarSrc={avatarByPlayerId[ranks.second.playerId]}
             position="dock-left"
             size="mini"
             showBadge
@@ -414,6 +451,7 @@ export default function EndGameRevealPage() {
             key={`rank-3-${ranks.third.playerId}`}
             entry={ranks.third}
             rank={3}
+            avatarSrc={avatarByPlayerId[ranks.third.playerId]}
             position="dock-center"
             size="mini"
             showBadge
@@ -425,6 +463,7 @@ export default function EndGameRevealPage() {
             key={`rank-4-${ranks.fourth.playerId}`}
             entry={ranks.fourth}
             rank={4}
+            avatarSrc={avatarByPlayerId[ranks.fourth.playerId]}
             position="dock-right"
             size="mini"
             showBadge
@@ -437,6 +476,7 @@ export default function EndGameRevealPage() {
             key={`hero-${heroEntry.playerId}-${currentHeroRank}`}
             entry={heroEntry}
             rank={currentHeroRank as number}
+            avatarSrc={avatarByPlayerId[heroEntry.playerId]}
             position={
               dockingRank && dockingRank === currentHeroRank
                 ? // During dock steps, animate from hero to dock slot.
@@ -461,6 +501,7 @@ export default function EndGameRevealPage() {
 function PlayerCard({
   entry,
   rank,
+  avatarSrc,
   position,
   size,
   showBadge,
@@ -468,6 +509,7 @@ function PlayerCard({
 }: {
   entry: ResultWithProfile;
   rank: number;
+  avatarSrc?: string;
   position: 'hero' | 'dock-left' | 'dock-center' | 'dock-right';
   size: 'hero' | 'mini';
   showBadge: boolean;
@@ -504,7 +546,7 @@ function PlayerCard({
           </span>
         ) : null}
         <img
-          src={profile.avatarUrl}
+          src={avatarSrc || profile.avatarUrl}
           alt={entry.displayName}
           loading="lazy"
           onLoad={() => setAvatarLoaded(true)}

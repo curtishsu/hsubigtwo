@@ -5,7 +5,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "backfill:roundLogs": "node scripts/backfillRoundLogs.mjs"
   },
   "dependencies": {
     "firebase": "^12.6.0",
@@ -19,6 +20,7 @@
     "@types/react-dom": "^18.3.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.13",
+    "firebase-admin": "^13.5.0",
     "typescript": "^5.6.3"
   }
 }

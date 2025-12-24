@@ -57,10 +57,31 @@ export interface GameWithResults extends GameDoc {
   results: GameResultDoc[];
 }
 
+export type RoundLogSource = 'realtime' | 'endGame' | 'backfill';
+
+export interface RoundLogDoc {
+  id: string;
+  gameId: string;
+  roundId: string;
+  roundNumber: number;
+  pointsByPlayer: Record<PlayerInitial, number>;
+  totalRoundPoints: number;
+  gameStartedAt: Date | null;
+  gameEndedAt: Date | null;
+  gameDate: Date | null;
+  source: RoundLogSource;
+  loggedAt: Date | null;
+}
+
 export const gamesCollection = collection(db, 'games');
+export const roundLogsCollection = collection(db, 'roundLogs');
 
 export function gameDoc(gameId: string) {
   return doc(gamesCollection, gameId);
+}
+
+export function roundLogDoc(gameId: string, roundId: string) {
+  return doc(roundLogsCollection, `${gameId}_${roundId}`);
 }
 
 export function roundsCollection(gameId: string) {
@@ -77,6 +98,86 @@ export function roundScoresCollection(gameId: string, roundId: string) {
 
 export function roundScoreDoc(gameId: string, roundId: string, playerId: PlayerInitial) {
   return doc(roundScoresCollection(gameId, roundId), playerId);
+}
+
+function buildPointsByPlayerFromScores(
+  scoresSnapshot: Awaited<ReturnType<typeof getDocs>>,
+): Record<PlayerInitial, number> | null {
+  const pointsByPlayer: Partial<Record<PlayerInitial, number>> = {};
+
+  scoresSnapshot.forEach((score) => {
+    const data = score.data() as { playerId?: unknown; points?: unknown };
+    const playerId = typeof data.playerId === 'string' ? (data.playerId as PlayerInitial) : undefined;
+    const points = typeof data.points === 'number' ? data.points : undefined;
+    if (playerId && PLAYER_ORDER.includes(playerId) && typeof points === 'number') {
+      pointsByPlayer[playerId] = points;
+    }
+  });
+
+  const complete = PLAYER_ORDER.every((playerId) => typeof pointsByPlayer[playerId] === 'number');
+  if (!complete) {
+    return null;
+  }
+
+  return pointsByPlayer as Record<PlayerInitial, number>;
+}
+
+export async function reconcileRoundLogForRound(
+  gameId: string,
+  roundId: string,
+  source: RoundLogSource = 'realtime',
+): Promise<{ wrote: boolean }> {
+  const roundRef = roundDoc(gameId, roundId);
+  const scoresSnapshot = await getDocs(collection(roundRef, 'scores'));
+
+  if (scoresSnapshot.size !== PLAYER_ORDER.length) {
+    await deleteDoc(roundLogDoc(gameId, roundId)).catch(() => undefined);
+    return { wrote: false };
+  }
+
+  const pointsByPlayer = buildPointsByPlayerFromScores(scoresSnapshot);
+  if (!pointsByPlayer) {
+    await deleteDoc(roundLogDoc(gameId, roundId)).catch(() => undefined);
+    return { wrote: false };
+  }
+
+  const roundSnapshot = await getDoc(roundRef);
+  if (!roundSnapshot.exists()) {
+    await deleteDoc(roundLogDoc(gameId, roundId)).catch(() => undefined);
+    return { wrote: false };
+  }
+
+  const gameSnapshot = await getDoc(gameDoc(gameId));
+  if (!gameSnapshot.exists()) {
+    await deleteDoc(roundLogDoc(gameId, roundId)).catch(() => undefined);
+    return { wrote: false };
+  }
+
+  const roundNumber = (roundSnapshot.get('roundNumber') as number) ?? Number.parseInt(roundId, 10);
+  const totalRoundPoints = PLAYER_ORDER.reduce((sum, playerId) => sum + pointsByPlayer[playerId], 0);
+
+  const startedAt = gameSnapshot.get('startedAt') ?? null;
+  const endedAt = gameSnapshot.get('endedAt') ?? null;
+  const gameDate = endedAt ?? startedAt ?? null;
+
+  await setDoc(
+    roundLogDoc(gameId, roundId),
+    {
+      gameId,
+      roundId,
+      roundNumber,
+      pointsByPlayer,
+      totalRoundPoints,
+      gameStartedAt: startedAt,
+      gameEndedAt: endedAt,
+      gameDate,
+      source,
+      loggedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  return { wrote: true };
 }
 
 export async function ensurePlayersSeeded() {
@@ -177,6 +278,7 @@ export async function updateTotalRounds(gameId: string, nextTotal: number) {
         const scoresSnapshot = await getDocs(collection(roundRef, 'scores'));
         await Promise.all(scoresSnapshot.docs.map((scoreDoc) => deleteDoc(scoreDoc.ref)));
         await deleteDoc(roundRef);
+        await deleteDoc(roundLogDoc(gameId, id)).catch(() => undefined);
       }),
     );
   }
@@ -193,6 +295,7 @@ export async function setRoundScore(
   const scoreRef = roundScoreDoc(gameId, roundId, playerId);
   if (points === null) {
     await deleteDoc(scoreRef).catch(() => undefined);
+    await reconcileRoundLogForRound(gameId, roundId, 'realtime');
     return;
   }
 
@@ -209,6 +312,8 @@ export async function setRoundScore(
     },
     { merge: true },
   );
+
+  await reconcileRoundLogForRound(gameId, roundId, 'realtime');
 }
 
 export async function endGame(gameId: string, status: GameStatus = 'completed') {
@@ -238,6 +343,12 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
   };
 
   let completedRounds = 0;
+  const completedRoundLogs: Array<{
+    roundId: string;
+    roundNumber: number;
+    pointsByPlayer: Record<PlayerInitial, number>;
+    totalRoundPoints: number;
+  }> = [];
 
   await Promise.all(
     roundsSnapshot.docs.map(async (roundDocSnapshot) => {
@@ -268,6 +379,18 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
         }
         roundsWonMatrix[zeroPointPlayers[0]] += 1;
         completedRounds += 1;
+
+        const completePointsByPlayer = pointsByPlayer as Record<PlayerInitial, number>;
+        const totalRoundPoints = PLAYER_ORDER.reduce(
+          (sum, playerId) => sum + completePointsByPlayer[playerId],
+          0,
+        );
+        completedRoundLogs.push({
+          roundId: roundDocSnapshot.id,
+          roundNumber: roundDocSnapshot.get('roundNumber') as number,
+          pointsByPlayer: completePointsByPlayer,
+          totalRoundPoints,
+        });
       }
     }),
   );
@@ -295,6 +418,26 @@ export async function endGame(gameId: string, status: GameStatus = 'completed') 
   }
 
   const batch = writeBatch(db);
+
+  completedRoundLogs.forEach((roundLog) => {
+    const logRef = roundLogDoc(gameId, roundLog.roundId);
+    batch.set(
+      logRef,
+      {
+        gameId,
+        roundId: roundLog.roundId,
+        roundNumber: roundLog.roundNumber,
+        pointsByPlayer: roundLog.pointsByPlayer,
+        totalRoundPoints: roundLog.totalRoundPoints,
+        gameStartedAt: snapshot.get('startedAt') ?? null,
+        gameEndedAt: serverTimestamp(),
+        gameDate: serverTimestamp(),
+        source: 'endGame' as RoundLogSource,
+        loggedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
 
   sorted.forEach((entry, index) => {
     const rank = index + 1;
@@ -583,6 +726,9 @@ export async function deleteGame(gameId: string): Promise<GameWithResults> {
         batch.delete(scoreDoc.ref);
       });
       batch.delete(roundDocSnapshot.ref);
+
+      // Delete denormalized round log (top-level)
+      batch.delete(roundLogDoc(gameId, roundDocSnapshot.id));
     }),
   );
 
