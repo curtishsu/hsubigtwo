@@ -25,6 +25,13 @@ Play and track family Big Two games with real-time scoring, persistent history, 
    ```
 3. (Optional) Enable Auth providers you want to exercise on `/firebase-sanity` — Email/Password and Google are supported out of the box.
 
+## Family PIN gate (optional)
+
+This repo supports a simple **4-digit PIN** gate (remember device via cookie).
+
+- Configure env vars described in `docs/family_pin_auth.md`
+- Start the app and visit any page → you’ll be redirected to `/unlock`
+
 ## Local Development
 
 ```bash
